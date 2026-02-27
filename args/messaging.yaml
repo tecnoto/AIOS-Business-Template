@@ -4,9 +4,10 @@ messaging:
     # User whitelist — configured by setup.py
     allowed_users: []  # Set during setup
 
-    # Rate limiting
+    # Rate limiting (per-minute and per-hour)
     rate_limit:
       max_messages_per_minute: 30
+      max_messages_per_hour: 200
       cooldown_message: "Rate limit reached. Wait a moment."
 
     # Blocked input patterns (regex, case-insensitive)

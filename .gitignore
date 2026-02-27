@@ -1,13 +1,21 @@
 # Environment & Credentials
 .env
+.env.*
 credentials.json
 token.json
 setup_config.yaml
+secrets.yaml
+*.pem
+*.key
+*.p12
+*.pfx
 
 # Databases (generated at runtime)
 data/*.db
 data/*.db-shm
 data/*.db-wal
+data/*.sqlite
+data/*.sqlite3
 data/*.log
 data/capture_markers/
 
@@ -32,6 +40,8 @@ __pycache__/
 .eggs/
 dist/
 build/
+.venv/
+venv/
 
 # OS
 .DS_Store
@@ -43,3 +53,6 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Node (if used for Claude Code plugins)
+node_modules/

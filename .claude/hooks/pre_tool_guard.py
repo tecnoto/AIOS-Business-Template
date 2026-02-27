@@ -7,59 +7,186 @@ It blocks dangerous operations that should never happen automatically.
 
 Exit codes:
   0 = Allow the tool to proceed
-  2 = Block the tool with an error message (sent to stderr)
+  2 = Block the tool with an error message
+
+Three-tier classification:
+  BLOCKED  — Hard stop, exit code 2 (dangerous patterns)
+  PROTECTED — Context-aware blocking (critical files)
+  CAUTION  — Informational warning, still allowed (external actions)
 """
 
 import json
 import sys
 import re
 
-# Read the hook input from stdin
-hook_input = json.loads(sys.stdin.read())
-tool_name = hook_input.get("tool_name", "")
-tool_input = hook_input.get("tool_input", {})
 
-# === BLOCKED PATTERNS ===
+# ---------------------------------------------------------------------------
+# Blocked command patterns — always blocked, no exceptions
+# ---------------------------------------------------------------------------
 
-# 1. Destructive file operations
-if tool_name == "Bash":
-    command = tool_input.get("command", "")
+BLOCKED_COMMANDS = [
+    # Destructive file operations (multiple syntaxes)
+    r"rm\s+(-[a-zA-Z]*r[a-zA-Z]*\s+-[a-zA-Z]*f|"
+    r"-[a-zA-Z]*f[a-zA-Z]*\s+-[a-zA-Z]*r|"
+    r"-rf|-fr|--recursive\s+--force|--force\s+--recursive)\s+(?!/.*\.tmp)",
+    r"find\s+.*-delete",
+    r"find\s+.*-exec\s+rm",
+    # Git destructive operations
+    r"git\s+push\s+.*(-f|--force)",
+    r"git\s+reset\s+--hard",
+    r"git\s+clean\s+-[a-zA-Z]*f",
+    r"git\s+checkout\s+--\s+\.",
+    # Database destruction
+    r"DROP\s+(TABLE|DATABASE)",
+    r"DELETE\s+FROM\s+\w+\s*;",  # DELETE without WHERE
+    r"TRUNCATE\s+TABLE",
+    # System-level dangers
+    r"chmod\s+777",
+    r":()\{.*\|.*&\s*\};:",  # Fork bomb
+    r"mkfs\.",
+    r"dd\s+if=.*of=/dev/",
+]
 
-    # Block rm -rf on anything outside .tmp/
-    if re.search(r'rm\s+-rf\s+(?!.*\.tmp)', command):
-        print("BLOCKED: rm -rf is only allowed on .tmp/ directories", file=sys.stderr)
-        sys.exit(2)
+# ---------------------------------------------------------------------------
+# Protected files — cannot be deleted or overwritten via tools
+# ---------------------------------------------------------------------------
 
-    # Block force push to main/master
-    if re.search(r'git\s+push\s+.*--force.*\b(main|master)\b', command):
-        print("BLOCKED: Force push to main/master is not allowed", file=sys.stderr)
-        sys.exit(2)
+PROTECTED_FILES = [
+    ".env",
+    "credentials.json",
+    "token.json",
+    "setup_config.yaml",
+    "CLAUDE.md",
+    "memory/MEMORY.md",
+    ".claude/hooks/pre_tool_guard.py",
+    ".claude/settings.local.json",
+]
 
-    if re.search(r'git\s+push\s+.*\b(main|master)\b.*--force', command):
-        print("BLOCKED: Force push to main/master is not allowed", file=sys.stderr)
-        sys.exit(2)
+# ---------------------------------------------------------------------------
+# Secret exposure patterns — block commands that would leak credentials
+# ---------------------------------------------------------------------------
 
-    # Block dropping databases
-    if re.search(r'DROP\s+(TABLE|DATABASE)', command, re.IGNORECASE):
-        print("BLOCKED: DROP TABLE/DATABASE requires manual execution", file=sys.stderr)
-        sys.exit(2)
+SECRET_EXPOSURE_PATTERNS = [
+    # Direct echo/print of secrets
+    r"(echo|printf|cat)\s+.*\b(sk-[a-zA-Z0-9]{20,}|AKIA[A-Z0-9]{16}|"
+    r"xoxb-|ghp_|gho_|pcsk_|pplx-|Bearer\s)",
+    # Environment variable exposure
+    r"\b(printenv|env\b|set\b)(\s|$|\s*\|)",
+    r"(echo|printf)\s+.*\$\{?(ANTHROPIC_API_KEY|OPENAI_API_KEY|"
+    r"PINECONE_API_KEY|TELEGRAM_BOT_TOKEN|API_KEY|SECRET|PASSWORD)",
+    # Python-based credential access and exposure
+    r"python3?\s+-c\s+.*os\.(environ|getenv|system).*("
+    r"API_KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL)",
+    # Network exfiltration of env/secrets
+    r"(curl|wget|nc|ncat)\s+.*(\$\{?[A-Z_]*(KEY|TOKEN|SECRET|PASSWORD)|"
+    r"/etc/passwd|\.env\b|credentials)",
+    # Base64 encoding of secrets (exfiltration technique)
+    r"base64\s+.*\.(env|pem|key|credentials)",
+]
 
-# 2. Credential file writes
-if tool_name in ("Write", "Edit"):
-    file_path = tool_input.get("file_path", "")
-    protected_files = [".env", "credentials.json", "token.json", "setup_config.yaml"]
-    for pf in protected_files:
-        if file_path.endswith(pf):
-            print(f"BLOCKED: Direct writes to {pf} are not allowed. Use setup.py or manual editing.", file=sys.stderr)
-            sys.exit(2)
+# ---------------------------------------------------------------------------
+# Network exfiltration guards — block suspicious outbound data transfer
+# ---------------------------------------------------------------------------
 
-# 3. Check for API keys in commands (basic pattern)
-if tool_name == "Bash":
-    command = tool_input.get("command", "")
-    # Detect common API key patterns being echoed or logged
-    if re.search(r'(echo|printf|cat).*\b(sk-[a-zA-Z0-9]{20,}|AKIA[A-Z0-9]{16})\b', command):
-        print("BLOCKED: Command appears to expose API keys", file=sys.stderr)
-        sys.exit(2)
+EXFILTRATION_PATTERNS = [
+    # Piping file contents to remote
+    r"cat\s+\.(env|pem|key)\s*\|",
+    r"curl\s+.*-d\s+@\.(env|pem|key)",
+    r"curl\s+.*--data.*\.(env|pem|key)",
+    # SSH/SCP with credential files
+    r"scp\s+.*\.(env|pem|key|credentials)",
+]
 
-# All checks passed — allow the tool
-sys.exit(0)
+
+def check_bash_command(command: str) -> dict:
+    """Check a Bash command against all security patterns."""
+    # Check blocked commands
+    for pattern in BLOCKED_COMMANDS:
+        if re.search(pattern, command, re.IGNORECASE):
+            return {
+                "allow": False,
+                "reason": f"BLOCKED: Command matches dangerous pattern. "
+                         f"If you need to do this, ask the user for explicit confirmation.",
+            }
+
+    # Check protected files for deletion/overwrite
+    for protected in PROTECTED_FILES:
+        if protected in command and re.search(r"\b(rm|unlink|mv|>)\b", command):
+            return {
+                "allow": False,
+                "reason": f"BLOCKED: Cannot delete or overwrite protected file '{protected}'. "
+                         f"This file is critical to the system.",
+            }
+
+    # Check secret exposure
+    for pattern in SECRET_EXPOSURE_PATTERNS:
+        if re.search(pattern, command, re.IGNORECASE):
+            return {
+                "allow": False,
+                "reason": "BLOCKED: Command may expose API keys or credentials. "
+                         "Use .env and dotenv instead of echoing secrets.",
+            }
+
+    # Check exfiltration patterns
+    for pattern in EXFILTRATION_PATTERNS:
+        if re.search(pattern, command, re.IGNORECASE):
+            return {
+                "allow": False,
+                "reason": "BLOCKED: Command appears to transfer credential files externally.",
+            }
+
+    return {"allow": True, "reason": ""}
+
+
+def check_file_write(file_path: str) -> dict:
+    """Check if a Write/Edit targets a protected file."""
+    for protected in PROTECTED_FILES:
+        if file_path.endswith(protected):
+            return {
+                "allow": False,
+                "reason": f"BLOCKED: Direct writes to '{protected}' are not allowed. "
+                         f"Use setup.py or manual editing.",
+            }
+    return {"allow": True, "reason": ""}
+
+
+def main():
+    """Read hook input from stdin, check the command, exit appropriately."""
+    try:
+        raw = sys.stdin.read()
+        if not raw:
+            sys.exit(0)
+
+        data = json.loads(raw)
+        tool_name = data.get("tool_name", "")
+        tool_input = data.get("tool_input", {})
+
+        # Check Bash commands
+        if tool_name == "Bash":
+            command = tool_input.get("command", "")
+            if not command:
+                sys.exit(0)
+
+            result = check_bash_command(command)
+            if not result["allow"]:
+                print(result["reason"])
+                sys.exit(2)
+
+        # Check file writes
+        elif tool_name in ("Write", "Edit"):
+            file_path = tool_input.get("file_path", "")
+            result = check_file_write(file_path)
+            if not result["allow"]:
+                print(result["reason"])
+                sys.exit(2)
+
+        sys.exit(0)
+
+    except json.JSONDecodeError:
+        sys.exit(0)  # Can't parse = allow (don't break things)
+    except Exception:
+        sys.exit(0)  # Hooks should never crash Claude — fail-open
+
+
+if __name__ == "__main__":
+    main()

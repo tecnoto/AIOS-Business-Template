@@ -1,0 +1,20 @@
+# AI OS — Runtime Preferences
+# Read by Claude at skill execution time (not imported by scripts).
+# The setup wizard or business-setup skill will update this file.
+
+# General
+timezone: "UTC"
+date_format: "YYYY-MM-DD"
+
+# Model routing defaults — use the right model for the right task
+default_model: "opus"           # Complex reasoning, architecture, creative strategy
+automation_model: "sonnet"      # Routine automation, research, content creation
+quick_model: "haiku"            # Simple formatting, classification, scoring
+
+# Content defaults
+content_platform: "linkedin"    # Primary content platform
+post_length: "medium"           # short (~300 chars), medium (~600 chars), long (~1200 chars)
+
+# Communication safety
+confirm_before_sending: true    # Always confirm before external communications
+verbose_output: false           # Detailed vs concise output

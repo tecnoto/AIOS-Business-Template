@@ -63,9 +63,45 @@ from message_db import log_message, get_history, update_status
 # ---------------------------------------------------------------------------
 
 MAX_RESPONSE_LENGTH = 4000  # Telegram message limit
+MAX_INPUT_LENGTH = 4000  # Max user message length to process
 CLAUDE_TIMEOUT = 600  # 10 minutes
 PROGRESS_UPDATE_INTERVAL = 45  # Send progress update every N seconds
 CONVERSATION_HISTORY_LIMIT = 20
+
+
+# ---------------------------------------------------------------------------
+# Input/Output sanitization
+# ---------------------------------------------------------------------------
+
+# Secrets patterns to strip from output before sending to users
+_SECRET_PATTERNS = [
+    (r"sk-[A-Za-z0-9_-]{20,}", "[REDACTED]"),
+    (r"pk_(?:live|test)_[A-Za-z0-9]{20,}", "[REDACTED]"),
+    (r"xoxb-[A-Za-z0-9-]{20,}", "[REDACTED]"),
+    (r"ghp_[A-Za-z0-9]{20,}", "[REDACTED]"),
+    (r"pcsk_[A-Za-z0-9_-]{20,}", "[REDACTED]"),
+    (r"AKIA[A-Z0-9]{16}", "[REDACTED]"),
+    (r"\d{6,}:[A-Za-z0-9_-]{30,}", "[REDACTED]"),  # Telegram bot tokens
+    (r"eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}", "[REDACTED]"),
+    (r"(?i)(?:api[_-]?key|secret|token|password)[\"'\s:=]+[A-Za-z0-9+/=_-]{20,}", "[REDACTED]"),
+]
+_compiled_secrets = [(re.compile(p), r) for p, r in _SECRET_PATTERNS]
+
+
+def sanitize_output(text: str) -> str:
+    """Strip secrets from Claude output before sending to Telegram."""
+    for pattern, replacement in _compiled_secrets:
+        text = pattern.sub(replacement, text)
+    return text
+
+
+def sanitize_input(text: str) -> str:
+    """Basic input validation — truncate and strip control characters."""
+    if len(text) > MAX_INPUT_LENGTH:
+        text = text[:MAX_INPUT_LENGTH] + "\n(message truncated)"
+    # Strip null bytes and other control chars (keep newlines/tabs)
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", text)
+    return text
 
 
 # ---------------------------------------------------------------------------
@@ -201,10 +237,12 @@ def invoke_claude_streaming(
     if not claude_cmd:
         return False, "Claude Code CLI not found. Install with: npm install -g @anthropic-ai/claude-code"
 
+    # NOTE: We do NOT use --dangerously-skip-permissions. The Claude subprocess
+    # inherits the project's .claude/settings.local.json which includes the
+    # PreToolUse guardrail hook. Skipping permissions would bypass ALL safety.
     if claude_cmd.startswith("npx"):
         cmd = claude_cmd.split() + [
             "-p", prompt,
-            "--dangerously-skip-permissions",
             "--output-format", "stream-json",
             "--verbose",
         ]
@@ -212,7 +250,6 @@ def invoke_claude_streaming(
         cmd = [
             claude_cmd,
             "-p", prompt,
-            "--dangerously-skip-permissions",
             "--output-format", "stream-json",
             "--verbose",
         ]
@@ -295,12 +332,10 @@ def invoke_claude_streaming(
             if elapsed >= update_interval:
                 send_typing_action(chat_id)
 
-                progress_msg = f"Still working...\n\n"
-                progress_msg += f"Time: {int(time.time() - start_time)}s\n"
+                elapsed_s = int(time.time() - start_time)
+                progress_msg = f"Still working... ({elapsed_s}s)"
                 if tool_count > 0:
-                    progress_msg += f"Tools used: {tool_count}\n"
-                if current_activity:
-                    progress_msg += f"Current: {current_activity}"
+                    progress_msg += f"\nSteps completed: {tool_count}"
 
                 send_message(chat_id, progress_msg)
                 last_update_time = time.time()
@@ -338,9 +373,9 @@ def invoke_claude(prompt: str, timeout: int = CLAUDE_TIMEOUT) -> Tuple[bool, str
         return False, "Claude Code CLI not found."
 
     if claude_cmd.startswith("npx"):
-        cmd = claude_cmd.split() + ["-p", prompt, "--dangerously-skip-permissions"]
+        cmd = claude_cmd.split() + ["-p", prompt]
     else:
-        cmd = [claude_cmd, "-p", prompt, "--dangerously-skip-permissions"]
+        cmd = [claude_cmd, "-p", prompt]
 
     try:
         result = subprocess.run(
@@ -405,13 +440,13 @@ def format_response(success: bool, response: str, execution_time: float) -> str:
 
 def handle_message(message: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]:
     chat_id = message.get("chat_id")
-    text = message.get("text", "")
+    text = sanitize_input(message.get("text", ""))
     username = message.get("username", "unknown")
 
     result = {
         "chat_id": chat_id,
         "username": username,
-        "request": text,
+        "request": text[:200],  # Don't store full input in result dict
         "timestamp": datetime.now().isoformat(),
         "dry_run": dry_run,
     }
@@ -463,6 +498,9 @@ def handle_message(message: Dict[str, Any], dry_run: bool = False) -> Dict[str, 
     )
 
     execution_time = time.time() - start_time
+
+    # Sanitize output — strip any leaked secrets before sending to user
+    response = sanitize_output(response)
 
     # Format and send response
     formatted = format_response(success, response, execution_time)

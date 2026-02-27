@@ -68,6 +68,9 @@ _SECRET_PATTERNS = [
     (r"fc-[a-f0-9]{20,}", "[REDACTED_FC_KEY]"),
     (r"pcsk_[A-Za-z0-9_-]{20,}", "[REDACTED_PINECONE_KEY]"),
     (r"AIzaSy[A-Za-z0-9_-]{20,}", "[REDACTED_GOOGLE_KEY]"),
+    (r"ASIA[A-Z0-9]{16}", "[REDACTED_AWS_SESSION]"),
+    # Telegram bot tokens (format: 123456789:ABCdef...)
+    (r"\d{8,10}:[A-Za-z0-9_-]{30,}", "[REDACTED_TELEGRAM_TOKEN]"),
     # Bearer tokens
     (r"Bearer\s+[A-Za-z0-9._-]{20,}", "[REDACTED_BEARER]"),
     # JWTs (three base64 segments separated by dots)

@@ -30,10 +30,12 @@ def banner():
 def ask(prompt, default=None, required=True, secret=False):
     """Prompt user for input with optional default."""
     suffix = f" [{default}]" if default else ""
-    if secret:
-        suffix += " (input hidden)" if not default else ""
     while True:
-        val = input(f"  {prompt}{suffix}: ").strip()
+        if secret:
+            import getpass
+            val = getpass.getpass(f"  {prompt}{suffix}: ").strip()
+        else:
+            val = input(f"  {prompt}{suffix}: ").strip()
         if not val and default:
             return default
         if not val and not required:
@@ -41,6 +43,8 @@ def ask(prompt, default=None, required=True, secret=False):
         if not val and required:
             print("    Required. Please enter a value.")
             continue
+        # Basic input validation — strip control chars, limit length
+        val = val.replace("\x00", "")[:500]
         return val
 
 
@@ -115,7 +119,8 @@ def create_env(config):
         f"TELEGRAM_ALLOWED_USERS={config.get('telegram_user_id', '')}",
     ]
     env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(f"  Created: {env_path}")
+    os.chmod(str(env_path), 0o600)  # Owner read/write only — no group/other access
+    print(f"  Created: {env_path} (permissions: 600)")
 
 
 def create_setup_config(config):
@@ -123,7 +128,8 @@ def create_setup_config(config):
     import yaml
     cfg_path = PROJECT_ROOT / "setup_config.yaml"
     cfg_path.write_text(yaml.dump(config, default_flow_style=False), encoding="utf-8")
-    print(f"  Created: {cfg_path}")
+    os.chmod(str(cfg_path), 0o600)  # Owner read/write only
+    print(f"  Created: {cfg_path} (permissions: 600)")
 
 
 def create_settings_local(config):
@@ -134,24 +140,42 @@ def create_settings_local(config):
     settings = {
         "permissions": {
             "allow": [
-                f"Bash(git -C {project_path} status)",
-                "Bash(python3:*)",
-                "Bash(wc:*)",
-                "Bash(ls:*)",
-                f"Read(//{project_path}/**)",
+                "Bash(git status:*)",
+                "Bash(git diff:*)",
+                "Bash(git log:*)",
                 "Bash(git add:*)",
                 "Bash(git commit:*)",
                 "Bash(git push:*)",
-                "Bash(code:*)",
+                f"Bash({python_path} tools/*)",
+                f"Bash({python_path} .claude/skills/*/scripts/*)",
+                "Bash(wc:*)",
+                "Bash(ls:*)",
+                "Bash(mkdir:*)",
+                "Bash(date:*)",
+                "Bash(pip3 install -r requirements.txt)",
+                f"Read(//{project_path}/**)",
             ]
         },
         "hooks": {
             "PreToolUse": [
                 {
+                    "matcher": "Bash",
                     "hooks": [
                         {
                             "type": "command",
                             "command": f"{python_path} .claude/hooks/pre_tool_guard.py",
+                            "timeout": 5,
+                        }
+                    ]
+                }
+            ],
+            "PostToolUse": [
+                {
+                    "matcher": "Bash",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": f"{python_path} .claude/hooks/validate_output.py",
                             "timeout": 5,
                         }
                     ]
@@ -417,10 +441,10 @@ def main():
 
     # --- API Keys ---
     print("\nAPI Keys (stored in .env — leave blank to skip):")
-    anthropic_key = ask("ANTHROPIC_API_KEY", required=False)
-    openai_key = ask("OPENAI_API_KEY (for mem0)", required=False)
-    pinecone_key = ask("PINECONE_API_KEY", required=False) if pinecone_index else ""
-    telegram_token = ask("TELEGRAM_BOT_TOKEN", required=False) if telegram_user_id else ""
+    anthropic_key = ask("ANTHROPIC_API_KEY", required=False, secret=True)
+    openai_key = ask("OPENAI_API_KEY (for mem0)", required=False, secret=True)
+    pinecone_key = ask("PINECONE_API_KEY", required=False, secret=True) if pinecone_index else ""
+    telegram_token = ask("TELEGRAM_BOT_TOKEN", required=False, secret=True) if telegram_user_id else ""
 
     # --- Build config ---
     config = {

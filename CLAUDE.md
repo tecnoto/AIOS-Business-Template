@@ -109,6 +109,48 @@ See `goals/onboard_new_department.md` for the process of adding new departments.
 
 ---
 
+## Agents — Specialized Subprocesses
+
+Three specialized agents are available in `.claude/agents/`:
+
+| Agent | Model | Tools | Purpose |
+|-------|-------|-------|---------|
+| `researcher` | Sonnet | Read, Glob, Grep, WebSearch, WebFetch | Read-only research |
+| `content-writer` | Sonnet | Read, Write, Glob | Content in user's voice |
+| `code-reviewer` | Opus | Read, Grep, Glob | Code quality analysis |
+
+Use agents via `context: fork` in skill frontmatter for cost savings and tool isolation.
+
+---
+
+## Security Architecture
+
+### Three Layers of Defense
+
+1. **Rules** (`.claude/rules/security.md`) — Declarative guidance the AI follows
+2. **Hooks** (`.claude/hooks/`) — Deterministic guards Claude CANNOT bypass:
+   - `pre_tool_guard.py` (PreToolUse) — Blocks dangerous commands before execution
+   - `validate_output.py` (PostToolUse) — Warns about leaked secrets in output
+3. **Middleware** (`tools/messaging/security.py`) — Runtime checks for Telegram pipeline
+
+### Security Principles
+
+- **Closed by default**: No whitelist configured = all users rejected
+- **Least privilege**: Agents get only the tools they need
+- **Sanitize at boundaries**: Input validated before processing, output scrubbed before sending
+- **Secrets never leave**: `sanitize_text()` in mem0_client.py strips credentials before external APIs
+- **Audit everything**: Security events logged to `data/security.log`
+
+### What the Hooks Block
+
+- `rm -rf`, `find -delete`, `git push --force`, `git reset --hard`
+- `DROP TABLE/DATABASE`, `DELETE FROM` without WHERE
+- Direct writes to `.env`, `credentials.json`, `CLAUDE.md`, `MEMORY.md`
+- Commands that expose API keys via echo, env, printenv, or Python
+- Network exfiltration of credential files
+
+---
+
 ## Business-Specific Guardrails
 
 _Fill these in during client onboarding. Examples:_
