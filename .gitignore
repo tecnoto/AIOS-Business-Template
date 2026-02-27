@@ -6,6 +6,8 @@ setup_config.yaml
 
 # Databases (generated at runtime)
 data/*.db
+data/*.db-shm
+data/*.db-wal
 data/*.log
 data/capture_markers/
 
