@@ -70,8 +70,8 @@ SECRET_EXPOSURE_PATTERNS = [
     # Direct echo/print of secrets
     r"(echo|printf|cat)\s+.*\b(sk-[a-zA-Z0-9]{20,}|AKIA[A-Z0-9]{16}|"
     r"xoxb-|ghp_|gho_|pcsk_|pplx-|Bearer\s)",
-    # Environment variable exposure
-    r"\b(printenv|env\b|set\b)(\s|$|\s*\|)",
+    # Environment variable exposure (standalone commands, not .env filenames)
+    r"(?<![.\w/])\b(printenv|env|set)\b(\s|$|\s*\|)",
     r"(echo|printf)\s+.*\$\{?(ANTHROPIC_API_KEY|OPENAI_API_KEY|"
     r"PINECONE_API_KEY|TELEGRAM_BOT_TOKEN|API_KEY|SECRET|PASSWORD)",
     # Python-based credential access and exposure
@@ -110,8 +110,11 @@ def check_bash_command(command: str) -> dict:
             }
 
     # Check protected files for deletion/overwrite
+    # Allow "git rm --cached" (untracking is safe — doesn't delete the file)
     for protected in PROTECTED_FILES:
         if protected in command and re.search(r"\b(rm|unlink|mv|>)\b", command):
+            if "git rm --cached" in command:
+                continue  # Safe: untracking, not deleting
             return {
                 "allow": False,
                 "reason": f"BLOCKED: Cannot delete or overwrite protected file '{protected}'. "
