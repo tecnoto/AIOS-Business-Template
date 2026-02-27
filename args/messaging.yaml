@@ -1,0 +1,80 @@
+messaging:
+  # Security configuration
+  security:
+    # User whitelist — configured by setup.py
+    allowed_users: []  # Set during setup
+
+    # Rate limiting
+    rate_limit:
+      max_messages_per_minute: 30
+      cooldown_message: "Rate limit reached. Wait a moment."
+
+    # Blocked input patterns (regex, case-insensitive)
+    blocked_patterns:
+      - "rm\\s+-rf"
+      - "sudo\\s+"
+      - "DROP\\s+TABLE"
+      - "DELETE\\s+FROM"
+      - "chmod\\s+777"
+      - "eval\\("
+      - "exec\\("
+      - "os\\.system"
+      - "__import__"
+      - "\\|\\s*sh"
+      - "\\|\\s*bash"
+      - "curl.*\\|.*sh"
+
+    # Destructive keywords requiring explicit confirmation
+    confirmation_required:
+      - "delete"
+      - "remove"
+      - "destroy"
+      - "purge"
+      - "reset"
+      - "wipe"
+
+  # Claude model settings (escalation only)
+  model:
+    conversation: "claude-sonnet-4-20250514"
+    max_tokens: 1024
+
+  # Ollama local LLM settings (primary — zero cost)
+  ollama:
+    base_url: "http://localhost:11434"
+    model: "llama3.2:3b"
+    timeout_seconds: 30
+    num_ctx: 8192
+
+  # Escalation rules: when to bypass local LLM and use Claude API
+  escalation:
+    always_escalate_keywords:
+      - "write code"
+      - "script for"
+      - "debug"
+      - "implement"
+      - "strategy"
+      - "business plan"
+      - "competitive analysis"
+      - "pricing model"
+      - "ROI"
+      - "architecture"
+      - "deploy"
+      - "refactor"
+    max_local_message_length: 500
+    explicit_escalation_triggers:
+      - "@claude"
+      - "/claude"
+    self_assessment_marker: "[ESCALATE]"
+
+  # Context injection settings
+  context:
+    max_conversation_history: 20
+    max_memory_results: 5
+    load_memory_md: true
+    memory_md_path: "memory/MEMORY.md"
+
+  # Workflow execution settings
+  workflow:
+    timeout_seconds: 300
+    max_response_length: 3800
+    fallback_to_queue: true

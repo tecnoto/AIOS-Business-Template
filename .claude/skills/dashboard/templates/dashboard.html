@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --surface-hover: #334155;
+            --border: #334155;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #06b6d4;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+        }
+        header h1 { font-size: 24px; font-weight: 600; }
+        header .meta { color: var(--text-muted); font-size: 13px; }
+
+        /* KPI Cards */
+        .kpi-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px; margin-bottom: 32px;
+        }
+        .kpi-card {
+            background: var(--surface); border-radius: 12px; padding: 20px;
+            border: 1px solid var(--border);
+        }
+        .kpi-card .label { color: var(--text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .kpi-card .value { font-size: 32px; font-weight: 700; margin: 4px 0; }
+        .kpi-card .sub { color: var(--text-muted); font-size: 13px; }
+        .kpi-card.success .value { color: var(--success); }
+        .kpi-card.warning .value { color: var(--warning); }
+        .kpi-card.info .value { color: var(--info); }
+        .kpi-card.accent .value { color: var(--accent); }
+
+        /* Sections */
+        .section { margin-bottom: 32px; }
+        .section h2 {
+            font-size: 18px; font-weight: 600; margin-bottom: 16px;
+            padding-bottom: 8px; border-bottom: 1px solid var(--border);
+        }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        /* Cards */
+        .card {
+            background: var(--surface); border-radius: 12px; padding: 20px;
+            border: 1px solid var(--border);
+        }
+        .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--text-muted); }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; padding: 8px 12px; color: var(--text-muted); border-bottom: 1px solid var(--border); font-weight: 500; }
+        td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+        tr:hover { background: var(--surface-hover); }
+
+        /* Activity Feed */
+        .feed-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--border); font-size: 13px;
+        }
+        .feed-item:last-child { border-bottom: none; }
+        .feed-time { color: var(--text-muted); white-space: nowrap; min-width: 140px; }
+        .feed-type {
+            display: inline-block; padding: 2px 8px; border-radius: 4px;
+            font-size: 11px; font-weight: 600; text-transform: uppercase;
+            min-width: 50px; text-align: center;
+        }
+        .feed-type.event { background: #1e3a5f; color: var(--accent); }
+        .feed-type.task { background: #1a3a2a; color: var(--success); }
+        .feed-content { flex: 1; }
+        .feed-detail { color: var(--text-muted); }
+        .feed-dept { color: var(--info); font-size: 11px; }
+
+        /* Kanban */
+        .kanban { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        @media (max-width: 900px) { .kanban { grid-template-columns: repeat(2, 1fr); } }
+        .kanban-col h4 {
+            font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;
+            color: var(--text-muted); margin-bottom: 8px;
+        }
+        .kanban-item {
+            background: var(--surface-hover); border-radius: 8px; padding: 10px;
+            margin-bottom: 8px; font-size: 12px; border-left: 3px solid;
+        }
+        .kanban-item.pending { border-color: var(--warning); }
+        .kanban-item.in_progress { border-color: var(--accent); }
+        .kanban-item.completed { border-color: var(--success); }
+        .kanban-item.failed { border-color: var(--danger); }
+
+        /* Chart containers */
+        .chart-container { position: relative; height: 250px; }
+
+        /* Dept hierarchy */
+        .dept-card {
+            background: var(--surface); border-radius: 8px; padding: 16px;
+            border: 1px solid var(--border); margin-bottom: 8px;
+        }
+        .dept-name { font-weight: 600; color: var(--accent); }
+        .dept-stats { display: flex; gap: 16px; margin-top: 8px; font-size: 13px; color: var(--text-muted); }
+
+        /* Badge */
+        .badge {
+            display: inline-block; padding: 2px 8px; border-radius: 12px;
+            font-size: 11px; font-weight: 600;
+        }
+        .badge.pending { background: #422006; color: var(--warning); }
+        .badge.completed { background: #052e16; color: var(--success); }
+        .badge.failed { background: #450a0a; color: var(--danger); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>{{ title }}</h1>
+            <div class="meta">Generated: {{ summary.generated_at }}</div>
+        </header>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card success">
+                <div class="label">Tasks Completed</div>
+                <div class="value">{{ summary.tasks_completed }}</div>
+                <div class="sub">{{ summary.tasks_pending }} pending &middot; {{ summary.tasks_failed }} failed</div>
+            </div>
+            <div class="kpi-card accent">
+                <div class="label">Messages Today</div>
+                <div class="value">{{ summary.messages_today }}</div>
+                <div class="sub">{{ summary.messages_week }} this week &middot; {{ summary.messages_total }} total</div>
+            </div>
+            <div class="kpi-card info">
+                <div class="label">Memories</div>
+                <div class="value">{{ summary.memories_vector }}</div>
+                <div class="sub">{{ summary.memories_new_week }} new this week &middot; {{ summary.memories_local }} local</div>
+            </div>
+            <div class="kpi-card warning">
+                <div class="label">Departments</div>
+                <div class="value">{{ summary.departments | length }}</div>
+                <div class="sub">{{ summary.departments | join(', ') }}</div>
+            </div>
+        </div>
+
+        <!-- Activity Feed + Project Tracker -->
+        <div class="grid-2">
+            <div class="section">
+                <h2>Activity Feed</h2>
+                <div class="card" style="max-height: 500px; overflow-y: auto;">
+                    {% for item in activity_feed[:30] %}
+                    <div class="feed-item">
+                        <span class="feed-time">{{ item.time }}</span>
+                        <span class="feed-type {{ item.type }}">{{ item.type }}</span>
+                        <div class="feed-content">
+                            {{ item.content }}
+                            <div class="feed-detail">{{ item.detail }}{% if item.latency %} &middot; {{ item.latency }}ms{% endif %}</div>
+                            {% if item.department != 'general' %}<span class="feed-dept">{{ item.department }}</span>{% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% if not activity_feed %}
+                    <p style="color: var(--text-muted); padding: 20px;">No activity recorded yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Project Tracker</h2>
+                <div class="kanban">
+                    <div class="kanban-col">
+                        <h4>Pending ({{ task_board.pending | length }})</h4>
+                        {% for t in task_board.pending %}
+                        <div class="kanban-item pending">{{ (t.request or '')[:80] }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="kanban-col">
+                        <h4>In Progress ({{ task_board.in_progress | length }})</h4>
+                        {% for t in task_board.in_progress %}
+                        <div class="kanban-item in_progress">{{ (t.request or '')[:80] }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="kanban-col">
+                        <h4>Completed ({{ task_board.completed | length }})</h4>
+                        {% for t in task_board.completed %}
+                        <div class="kanban-item completed">{{ (t.request or '')[:80] }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="kanban-col">
+                        <h4>Failed ({{ task_board.failed | length }})</h4>
+                        {% for t in task_board.failed %}
+                        <div class="kanban-item failed">{{ (t.request or '')[:80] }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid-2">
+            <div class="card">
+                <h3>Daily Activity (Last 30 Days)</h3>
+                <div class="chart-container">
+                    <canvas id="activityChart"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <h3>LLM Routing Distribution</h3>
+                <div class="chart-container">
+                    <canvas id="routingChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance + Memory -->
+        <div class="grid-2" style="margin-top: 24px;">
+            <div class="section">
+                <h2>Performance by Handler</h2>
+                <div class="card">
+                    <table>
+                        <thead>
+                            <tr><th>Handler</th><th>Count</th><th>Avg (ms)</th><th>Min</th><th>Max</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for h in performance.by_handler %}
+                            <tr>
+                                <td>{{ h.handler }}</td>
+                                <td>{{ h.count }}</td>
+                                <td>{{ h.avg_ms or '-' }}</td>
+                                <td>{{ h.min_ms or '-' }}</td>
+                                <td>{{ h.max_ms or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Memory Insights</h2>
+                <div class="card">
+                    <h3>Recent Captures</h3>
+                    <table>
+                        <thead><tr><th>Memory</th><th>Event</th><th>Date</th></tr></thead>
+                        <tbody>
+                            {% for m in memory_stats.recent %}
+                            <tr>
+                                <td>{{ (m.content or '')[:100] }}</td>
+                                <td><span class="badge completed">{{ m.event }}</span></td>
+                                <td>{{ m.created_at }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Department Hierarchy -->
+        {% if department_stats | length > 1 or (department_stats | length == 1 and department_stats[0].department != 'general') %}
+        <div class="section" style="margin-top: 24px;">
+            <h2>Department Hierarchy</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px;">
+                {% for dept in department_stats %}
+                <div class="dept-card">
+                    <div class="dept-name">{{ dept.department | title }}</div>
+                    <div class="dept-stats">
+                        <span>{{ dept.messages }} messages</span>
+                        <span>{{ dept.tasks }} tasks ({{ dept.tasks_completed }} done)</span>
+                        <span>{{ dept.avg_latency or 0 }}ms avg</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <footer style="margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 12px; text-align: center;">
+            AI Operating System Dashboard &middot; Generated {{ summary.generated_at }}
+        </footer>
+    </div>
+
+    <script>
+        // Daily Activity Chart
+        const activityCtx = document.getElementById('activityChart').getContext('2d');
+        new Chart(activityCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ performance_days_labels | tojson }},
+                datasets: [{
+                    label: 'Events',
+                    data: {{ performance_days_data | tojson }},
+                    backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#94a3b8', maxRotation: 45 }, grid: { display: false } },
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' }, beginAtZero: true }
+                }
+            }
+        });
+
+        // LLM Routing Chart
+        const routingCtx = document.getElementById('routingChart').getContext('2d');
+        new Chart(routingCtx, {
+            type: 'doughnut',
+            data: {
+                labels: {{ routing_labels | tojson }},
+                datasets: [{
+                    data: {{ routing_data | tojson }},
+                    backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444'],
+                    borderWidth: 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#94a3b8', padding: 16 } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

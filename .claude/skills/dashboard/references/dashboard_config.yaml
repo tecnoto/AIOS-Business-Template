@@ -1,0 +1,23 @@
+# Dashboard configuration
+dashboard:
+  title: "AI Operating System — Dashboard"
+  output_path: "dashboard/index.html"
+  auto_open: true
+
+  # Data sources (relative to project root)
+  databases:
+    activity: "data/activity.db"
+    memory: "data/memory.db"
+    mem0_history: "data/mem0_history.db"
+
+  # Display settings
+  recent_activity_limit: 50
+  recent_memories_limit: 10
+  chart_days: 30  # How many days of history to chart
+
+  # Cost estimation (per 1K tokens)
+  cost_estimates:
+    claude_input: 0.003
+    claude_output: 0.015
+    ollama: 0.0
+    avg_tokens_per_message: 500

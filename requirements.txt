@@ -1,0 +1,17 @@
+# Core
+python-dotenv>=1.0.0
+pyyaml>=6.0
+requests>=2.31.0
+
+# Claude API
+anthropic>=0.25.0
+
+# Telegram Bot
+python-telegram-bot>=20.0
+
+# Memory System
+fastembed>=0.2.0
+numpy>=1.24.0
+
+# Dashboard
+jinja2>=3.1.0

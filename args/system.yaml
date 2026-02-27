@@ -1,0 +1,17 @@
+# System-wide behavior settings
+# These control how the AI manager operates
+
+system:
+  mode: default
+  verbosity: normal
+  auto_save: true
+
+manager:
+  style: direct
+  decision_making: autonomous
+  error_handling: fix_and_document
+
+workflows:
+  batch_size: 10
+  rate_limit_buffer: 0.5
+  max_retries: 3

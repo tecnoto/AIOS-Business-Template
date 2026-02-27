@@ -1,0 +1,41 @@
+{
+  "_comment": "This is a TEMPLATE. Run setup.py to generate the real .claude/settings.local.json",
+  "permissions": {
+    "allow": [
+      "Bash(git -C {{PROJECT_PATH}} status)",
+      "Bash(python3:*)",
+      "Bash(wc:*)",
+      "Bash(ls:*)",
+      "Read(//{{PROJECT_PATH}}/**)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(code:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{PYTHON_PATH}} .claude/hooks/pre_tool_guard.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{PYTHON_PATH}} .claude/skills/memory/scripts/auto_capture.py",
+            "timeout": 60,
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,43 @@
+# Messaging Configuration
+# Direct API integration for Telegram
+
+telegram:
+  enabled: true
+  # Bot token from .env: TELEGRAM_BOT_TOKEN
+  # Get your user ID: message @userinfobot on Telegram
+  allowed_user_ids: [6653215753]  # Add your Telegram user ID here
+  allowed_usernames: []  # Or usernames (without @)
+  polling_interval: 1.0  # seconds between polling checks
+
+security:
+  # Rate limiting
+  max_messages_per_minute: 30
+  max_messages_per_hour: 200
+
+  # Operations requiring confirmation
+  require_confirmation:
+    - file_deletion
+    - git_push
+    - git_reset
+    - api_calls_with_cost
+    - system_commands
+
+  # Blocked patterns (will be rejected)
+  blocked_patterns:
+    - "rm -rf"
+    - "sudo"
+    - "DROP TABLE"
+    - "DELETE FROM"
+
+  # Sensitive patterns to redact from logs
+  redact_patterns:
+    - "API_KEY"
+    - "TOKEN"
+    - "PASSWORD"
+    - "SECRET"
+    - "CREDENTIAL"
+
+logging:
+  enabled: true
+  log_file: "logs/messaging.log"
+  log_to_db: true

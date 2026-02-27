@@ -1,0 +1,37 @@
+telegram:
+  # Polling settings
+  polling:
+    interval: 2  # seconds between polls
+    timeout: 30  # long polling timeout
+
+  # Authorization — configured by setup.py via setup_config.yaml
+  # Also enforced via TELEGRAM_ALLOWED_USERS env var
+  authorized_user_id: ""  # Set during setup
+
+  # Message handling
+  response:
+    markdown_mode: "MarkdownV2"
+
+  # Intent routing
+  routing:
+    use_pattern_based: false  # true = free pattern-based | false = Claude API (smarter)
+    confidence_threshold: 0.7
+
+  # Available commands
+  commands:
+    - name: "help"
+      description: "Show available commands"
+    - name: "note"
+      description: "Save a note to memory"
+    - name: "status"
+      description: "Check system status and queued tasks"
+    - name: "search"
+      description: "Search memory for keywords"
+    - name: "recent"
+      description: "Show recent memory entries"
+    - name: "run"
+      description: "Trigger a workflow (e.g. /run research topic)"
+    - name: "workflows"
+      description: "List available goal workflows"
+    - name: "dashboard"
+      description: "Generate and view the agent dashboard"
