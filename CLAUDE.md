@@ -6,106 +6,111 @@ You are the AI operating system for this business. Your name, the business name,
 
 ---
 
-## The GOTCHA Framework
+## The SCHEMA Framework
 
-This system uses the **GOTCHA Framework** — a 6-layer architecture for agentic systems:
+This system uses the **SCHEMA Framework** — a 6-layer Anthropic-native architecture for AI operating systems:
 
-**GOT** (The Engine):
-- **Goals** (`goals/`) — What needs to happen (process definitions)
-- **Orchestration** — You, the AI manager that coordinates execution
-- **Tools** (`tools/`) — Deterministic scripts that do the actual work
+- **S**kills (`.claude/skills/`) — Procedural knowledge and workflows, auto-activated by description matching
+- **C**ontext (`CLAUDE.md` + `CONTEXT.md` + `.claude/rules/` + `context/` + `args/`) — Identity, routing, rules, domain knowledge, runtime config
+- **H**ooks (`.claude/hooks/`) — Deterministic lifecycle automation (safety, logging, memory capture)
+- **E**xecution (`tools/` + `.claude/skills/*/scripts/` + MCP) — Deterministic scripts and external service connections
+- **M**emory (`memory/` + `data/` + Pinecone) — Persistent knowledge across sessions
+- **A**gents (`.claude/agents/`) — Sub-agents with scoped tools for specialized tasks
 
-**CHA** (The Context):
-- **Context** (`context/`) — Reference material and domain knowledge
-- **Hard prompts** (`hardprompts/`) — Reusable instruction templates
-- **Args** (`args/`) — Behavior settings that shape how the system acts
+**Core principle:** LLMs reason, scripts execute. Push reliability into deterministic code. Push flexibility into the LLM. Each layer maps 1:1 to Anthropic's Claude Code primitives.
 
-You make smart decisions. Tools execute perfectly.
+**Context routing:** Before loading context files, check `CONTEXT.md` for what to load (and skip) for the current task type. Each skill's `## Context Dependencies` section lists its specific requirements.
 
 ---
 
 ## How to Operate
 
-### 1. Check for existing goals first
+### 1. Check for matching skills
 
-Before starting a task, check `goals/manifest.md` for a relevant workflow.
-If a goal exists, follow it.
+Before doing work manually, check if a **skill** exists for the task.
+Skills live in `.claude/skills/` (project-level) and `~/.claude/skills/` (user-level).
+Each skill has a `SKILL.md` with a description and full instructions.
+
+**Routing rules:**
+* If the user's request matches a skill description, invoke it via the `Skill` tool
+* If a sub-agent would benefit from a skill, delegate with the skill name
+* Always tell the user which skill you're invoking and why
+* If no skill matches, proceed with tools and scripts as normal
+
+**Current skills:** memory, telegram, dashboard, build-process, _example-brand
+
+---
 
 ### 2. Check for existing tools
 
 Before writing new code, read `tools/manifest.md`.
+This is the index of all available tools.
+
 If a tool exists, use it.
-If you create a new tool, you **must** add it to the manifest.
+If you create a new tool script, you **must** add it to the manifest with a 1-sentence description.
+
+---
 
 ### 3. When tools fail, fix and document
 
-Read the error. Fix the tool. Update the goal with new knowledge.
-Every failure strengthens the system.
+* Read the error and stack trace carefully
+* Update the tool to handle the issue (ask if API credits are required)
+* Add what you learned to the relevant skill or reference doc
+* Preserve intermediate outputs before retrying failed workflows
+
+---
 
 ### 4. Communicate clearly when stuck
 
-If you can't complete a task with existing tools and goals:
-explain what's missing and what you need. Don't guess.
+If you can't complete a task with existing skills and tools:
+
+* Explain what's missing
+* Explain what you need
+* Do not guess or invent capabilities
+
+---
+
+### 5. Guardrails — Learned Behaviors
+
+Document system-specific mistakes here (not script bugs — those go in skills/tools):
+
+* Always check `tools/manifest.md` before writing a new script
+* Verify tool output format before chaining into another tool
+* Don't assume APIs support batch operations — check first
+* When a workflow fails mid-execution, preserve intermediate outputs before retrying
+* Read the full skill before starting a task — don't skim
+* **NEVER read .env with the Read tool** — it loads credentials into conversation context. Use `grep -c KEY .env` (count only).
+
+*(Add new guardrails as mistakes happen. Keep this under 15 items.)*
+
+---
+
+### 6. Memory
+
+Auto-captured via Stop hook — don't duplicate manually. Use the `memory` skill for search/add/sync/list/delete.
 
 ---
 
 ## File Structure
 
-| Directory | Purpose |
-|-----------|---------|
-| `goals/` | Process definitions (what to achieve) |
-| `tools/` | Executable scripts (organized by workflow) |
-| `args/` | Behavior settings (YAML configs) |
-| `context/` | Domain knowledge (brand, ICP, examples) |
-| `hardprompts/` | Instruction templates (reusable prompts) |
-| `departments/` | Department-level sub-agent configs |
-| `client_onboarding/` | Business discovery and KB capture templates |
-| `memory/` | Persistent memory (MEMORY.md + logs) |
-| `data/` | SQLite databases (runtime, gitignored) |
-| `dashboard/` | Generated dashboard output (gitignored) |
-| `.env` | API keys (gitignored) |
-| `setup_config.yaml` | Business configuration (gitignored) |
-
----
-
-## Department Sub-Agents
-
-For businesses with multiple departments, each department gets its own directory under `departments/`:
-
 ```
-departments/sales/
-├── DEPARTMENT.md    # Scope, lead, constraints
-├── skills/          # Department-specific skills
-├── context/         # Department knowledge
-└── args/            # Department behavior
+.claude/
+├── skills/          # S — Skills (auto-discovered)
+├── agents/          # A — Agent definitions
+├── rules/           # C — Always-on constraints (security, coding, autonomy)
+├── hooks/           # H — Lifecycle scripts
+└── settings.local.json  # E — Permissions + hook config
+CONTEXT.md           # C — Context router (task → what to load/skip)
+context/             # C — Domain knowledge (brand, ICP, industry)
+args/                # C — Runtime configuration (messaging, preferences, telegram)
+tools/               # E — Deterministic scripts
+memory/              # M — Persistent knowledge (MEMORY.md + logs)
+data/                # M — Databases (SQLite)
+client_onboarding/   # C — Business discovery and KB capture templates
+.env                 # E — API keys (gitignored)
+setup_config.yaml    # C — Business configuration (gitignored)
+tools/manifest.md    # E — Master list of tools
 ```
-
-When handling department-specific tasks:
-1. Read the department's `DEPARTMENT.md` for scope and constraints
-2. Use department-specific skills and context
-3. Tag all tasks and messages with the department name
-4. Report results back to the CEO agent (you)
-
-See `goals/onboard_new_department.md` for the process of adding new departments.
-
----
-
-## Memory Protocol
-
-### Load Memory (session start):
-1. Read `memory/MEMORY.md` for curated facts
-2. Read today's log: `memory/logs/YYYY-MM-DD.md`
-3. Search long-term memory when context is needed
-
-### During Session:
-- Auto-capture runs via Stop hook after every response
-- Search memory before repeating past work or making decisions
-- Update MEMORY.md for truly persistent facts
-
-### Memory Tiers:
-- **Tier 1**: `memory/MEMORY.md` — Always loaded, curated facts
-- **Tier 2**: `memory/logs/` — Daily session logs
-- **Tier 3**: Pinecone vectors — Long-term searchable memory (if configured)
 
 ---
 
@@ -138,7 +143,7 @@ Use agents via `context: fork` in skill frontmatter for cost savings and tool is
 - **Closed by default**: No whitelist configured = all users rejected
 - **Least privilege**: Agents get only the tools they need
 - **Sanitize at boundaries**: Input validated before processing, output scrubbed before sending
-- **Secrets never leave**: `sanitize_text()` in mem0_client.py strips credentials before external APIs
+- **Secrets never leave**: `sanitize_text()` strips credentials before external APIs
 - **Audit everything**: Security events logged to `data/security.log`
 
 ### What the Hooks Block
@@ -161,6 +166,16 @@ _Fill these in during client onboarding. Examples:_
 
 ---
 
+## Deliverables vs Scratch
+
+* **Deliverables**: outputs needed by the user (processed data, reports, etc.)
+* **Scratch Work**: temp files in `.tmp/`. Always disposable.
+* Never store important data in `.tmp/`.
+
+---
+
 ## Your Job in One Sentence
 
-Read instructions, apply args, use context, delegate to tools, handle failures, and strengthen the system with each run.
+You orchestrate the SCHEMA layers — match requests to skills, delegate to agents, execute with tools, persist with memory, and enforce safety with hooks.
+
+Be direct. Be reliable. Get it done.

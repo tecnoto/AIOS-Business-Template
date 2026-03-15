@@ -29,13 +29,15 @@
 
 ---
 
-## Skills (Reusable Patterns)
+## Skills (SCHEMA Layer)
 
 See `.claude/skills/` for documented methodologies with scripts:
 
 - `memory/` — Persistent memory management (mem0 + Pinecone)
 - `telegram/` — Telegram bot orchestration
 - `dashboard/` — Agent activity dashboard generation
+- `build-process/` — Streamlined build SOP (idea to MVP)
+- `task-executor/` — Execute queued tasks from activity.db
 - `_example-brand/` — Sample brand skill (image generation pattern)
 
 ---

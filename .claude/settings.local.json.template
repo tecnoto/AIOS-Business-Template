@@ -2,12 +2,12 @@
   "_comment": "This is a TEMPLATE. Run setup.py to generate the real .claude/settings.local.json",
   "permissions": {
     "allow": [
+      "Bash(python3:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)",
       "Bash({{PYTHON_PATH}} tools/*)",
       "Bash({{PYTHON_PATH}} .claude/skills/*/scripts/*)",
       "Bash(wc:*)",

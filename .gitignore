@@ -1,6 +1,8 @@
 # Environment & Credentials
 .env
 .env.*
+!.env.example
+!.env.template
 credentials.json
 token.json
 setup_config.yaml
