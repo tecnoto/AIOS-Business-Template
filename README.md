@@ -1,7 +1,7 @@
 # AI Operating System — Business Template
 
 > Clone this repo to create an AI-powered operating system for any business.
-> Built on the GOTCHA framework with Claude Code as the AI manager.
+> Built on the SCHEMA framework with Claude Code as the AI manager.
 
 ## Quick Start
 
@@ -26,16 +26,16 @@ claude
 
 A folder-based AI Operating System that turns a repository into a fully operational business automation system. It uses Claude Code as the AI manager, with deterministic Python scripts handling execution.
 
-## Architecture (GOTCHA Framework)
+## Architecture (SCHEMA Framework)
 
 | Layer | Directory | Purpose |
 |-------|-----------|---------|
-| **Goals** | `goals/` | Process definitions — what to achieve |
-| **Orchestration** | Claude (AI) | The manager that coordinates everything |
-| **Tools** | `tools/` | Executable scripts — deterministic work |
-| **Context** | `context/` | Domain knowledge — brand, ICP, examples |
-| **Hard Prompts** | `hardprompts/` | Reusable instruction templates |
-| **Args** | `args/` | Behavior settings — YAML configs |
+| **Skills** | `.claude/skills/` | Procedural knowledge and workflows, auto-activated by description matching |
+| **Context** | `CLAUDE.md` + `.claude/rules/` + `context/` + `args/` | Identity, routing, rules, domain knowledge, runtime config |
+| **Hooks** | `.claude/hooks/` | Deterministic lifecycle automation (safety, logging, memory capture) |
+| **Execution** | `tools/` + `.claude/skills/*/scripts/` | Deterministic scripts and external service connections |
+| **Memory** | `memory/` + `data/` | Persistent knowledge across sessions |
+| **Agents** | `.claude/agents/` | Sub-agents with scoped tools for specialized tasks |
 
 ## Included Skills
 
@@ -51,15 +51,15 @@ A folder-based AI Operating System that turns a repository into a fully operatio
 | Business Size | Architecture |
 |--------------|-------------|
 | **Solo / Small** | Single agent, direct skills |
-| **Mid-Market** | Department sub-agents (see `departments/`) |
-| **Enterprise** | CEO Agent + Department Leads + Sub-agents |
+| **Mid-Market** | Multiple skills, sub-agents for specialized tasks |
+| **Enterprise** | Lead agent + specialized sub-agents + agent teams |
 
 ## Client Onboarding
 
 Fill in the templates in `client_onboarding/` to capture business requirements:
 
 1. `01_discovery_interview.md` — Business questionnaire
-2. `02_department_map.md` — Org chart → agent hierarchy
+2. `02_department_map.md` — Org chart and team structure
 3. `03_workflow_inventory.md` — Workflows to automate
 4. `04_brand_profile.md` — Voice, colors, ICP
 5. `05_technical_requirements.md` — Tools and integrations
@@ -73,6 +73,10 @@ Fill in the templates in `client_onboarding/` to capture business requirements:
 - `.env` for credentials (gitignored)
 - Rate limiting and blocked pattern detection on all inputs
 - All safety enforced programmatically — Claude cannot bypass hooks
+
+## Author
+
+Forrest Shaw / [tecnoto](https://github.com/tecnoto)
 
 ## License
 

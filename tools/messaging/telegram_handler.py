@@ -179,9 +179,21 @@ def _build_system_prompt(user_id: str, message: str) -> str:
     # Get recent conversation history
     conversation = format_conversation_for_prompt(user_id, limit=max_history)
 
+    # Load agent name from config
+    agent_name = "Assistant"
+    setup_config_path = PROJECT_ROOT / "setup_config.yaml"
+    if setup_config_path.exists():
+        try:
+            with open(setup_config_path) as f:
+                setup_cfg = yaml.safe_load(f)
+                if setup_cfg and isinstance(setup_cfg, dict):
+                    agent_name = setup_cfg.get("agent_name", "Assistant")
+        except Exception:
+            pass
+
     # Build system prompt
     sections = [
-        "You are Majel, a personal AI assistant communicating via Telegram.",
+        f"You are {agent_name}, a personal AI assistant communicating via Telegram.",
         "Be concise and direct. Telegram messages should be short and actionable.",
         "Use plain text — no markdown formatting (Telegram renders it poorly in plain mode).",
         "Keep responses under 3800 characters.",

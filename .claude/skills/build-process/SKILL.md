@@ -105,7 +105,7 @@ Log findings in the Efficiency Log table at the bottom of build-order.md.
 
 After every project reaches MVP:
 - Extract reusable patterns → update AIOS-Business-Template
-- Extract reusable skills → add to Majel.Atlas skill library
+- Extract reusable skills → add to the project's skill library
 - Update this skill's recommended tech stack based on what worked
 - Update SCHEMA framework if token efficiency improvements were found
 
@@ -181,5 +181,5 @@ Can it be done with code/CLI/API?
 
 - `coding_standards` rule (always-on) — code quality
 - `security` rule (always-on) — credential handling
-- `build-app` skill (optional) — for ATLAS methodology on complex builds
+- `build-app` skill (optional) — for structured methodology on complex builds
 - `memory` skill — accounts registry lookup when onboarding services

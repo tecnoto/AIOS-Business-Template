@@ -10,7 +10,9 @@ Part of the **Context** layer in the SCHEMA framework.
 - `industry_knowledge.md` — Domain-specific facts and terminology
 - `case_studies.md` — Past successes and patterns
 - `competitor_landscape.md` — Competitive intelligence
-- `department_onboarding.md` — Guide for adding new department sub-agents
+- `onboarding_guide.md` — Guide for configuring and extending the system
+- `governance/` — Risk tiers, incident response, stop conditions, data retention, threat model
+- `schema_framework.md` — SCHEMA framework reference (6 layers)
 
 ## How to Use
 

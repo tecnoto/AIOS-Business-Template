@@ -16,8 +16,10 @@
 | **Telegram bot** | telegram skill SKILL.md only | client_onboarding/, dashboard |
 | **Dashboard** | dashboard skill SKILL.md only | client_onboarding/, telegram |
 | **Task execution** | Relevant skill for the task type, tools/manifest.md | client_onboarding/ |
-| **Security review** | security rule, pre_tool_guard.py patterns | client_onboarding/, brand context |
+| **Security review** | security rule, context/governance/*.md, pre_tool_guard.py patterns | client_onboarding/, brand context |
 | **Research** | researcher agent definition | coding_standards, tool scripts |
+| **Risk assessment** | context/governance/risk_tiers.md, autonomy rule | tool scripts, brand context |
+| **Incident response** | context/governance/incident_response.md, security rule | client_onboarding/, brand context |
 
 ## What to NEVER Load Together
 
@@ -25,6 +27,7 @@
 - Multiple skill SKILL.md files (each skill is self-contained)
 - `client_onboarding/` files during coding tasks
 - `args/` files not relevant to the current task
+- `context/governance/` files unless doing security/risk work
 
 ## Cross-Skill Dependencies
 
@@ -33,6 +36,7 @@
 | telegram | memory | Injects relevant memories into Claude context |
 | dashboard | memory | Reads activity data for display |
 | build-process | memory | Accounts registry lookup when onboarding services |
+| task-executor | build-process | Delegates BUILD_APP tasks |
 | memory | — | Foundation layer |
 | _example-brand | — | Self-contained |
 
@@ -44,5 +48,6 @@
 | .claude/rules/ (all files) | Always |
 | memory/MEMORY.md | Always |
 | context/*.md | On-demand per task type |
+| context/governance/*.md | Security/risk tasks only |
 | args/*.yaml | On-demand per task type |
 | client_onboarding/*.md | Onboarding tasks only |

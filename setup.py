@@ -352,7 +352,7 @@ def create_memory_md(config):
 ## Learned Behaviors
 
 - Always check tools/manifest.md before creating new scripts
-- Follow GOTCHA framework: Goals, Orchestration, Tools, Context, Hardprompts, Args
+- Follow SCHEMA framework: Skills, Context, Hooks, Execution, Memory, Agents
 
 ---
 *Last updated: {today}*
@@ -406,7 +406,7 @@ def main():
     # --- Business Configuration ---
     print("Business Configuration:")
     business_name = ask("Business name")
-    agent_name = ask("Agent name (the AI's identity)", default="Atlas")
+    agent_name = ask("Agent name (the AI's identity)", default="Assistant")
     business_type = ask_choice(
         "Business type:",
         ["solo", "small", "mid-market", "enterprise"]
